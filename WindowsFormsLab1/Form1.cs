@@ -14,6 +14,14 @@ namespace WindowsFormsLab1
         private Panel chartPanel;
         private DataGridView revenueGrid;
         private Color lineColor = Color.Blue;
+        
+        private int chartLeft = 60;
+        private int chartTop = 30;
+        private int chartRight;
+        private int chartBottom;
+
+        private Label companyNameLabel;
+        private MenuStrip menuStrip;
 
         public Form1()
         {
@@ -29,7 +37,14 @@ namespace WindowsFormsLab1
             MinimumSize = new Size(900, 550);
             KeyPreview = true;
 
-            var companyNameLabel = new Label
+            menuStrip = new MenuStrip();
+            var formatMenu = new ToolStripMenuItem("Format");
+            var companyNameMenuItem = new ToolStripMenuItem("Company Name");
+            companyNameMenuItem.Click += CompanyNameMenuItem_Click;
+            formatMenu.DropDownItems.Add(companyNameMenuItem);
+            menuStrip.Items.Add(formatMenu);
+
+            companyNameLabel = new Label
             {
                 Text = "ABC Company",
                 Dock = DockStyle.Top,
@@ -60,6 +75,7 @@ namespace WindowsFormsLab1
                 BackColor = Color.White
             };
             chartPanel.Paint += ChartPanel_Paint;
+            chartPanel.MouseClick += ChartPanel_MouseClick;
 
             revenueGrid = new DataGridView
             {
@@ -80,6 +96,28 @@ namespace WindowsFormsLab1
             Controls.Add(splitContainer);
             Controls.Add(reportTitleLabel);
             Controls.Add(companyNameLabel);
+            Controls.Add(menuStrip);
+            MainMenuStrip = menuStrip;
+        }
+
+        private void CompanyNameMenuItem_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new CompanyNameFormatDialog())
+            {
+                dialog.CompanyName = companyNameLabel.Text;
+                dialog.FontName = companyNameLabel.Font.Name;
+                dialog.FontSize = (int)companyNameLabel.Font.Size;
+                dialog.TextColor = companyNameLabel.ForeColor;
+
+                dialog.LoadCurrentSettings();
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    companyNameLabel.Text = dialog.CompanyName;
+                    companyNameLabel.Font = new Font(dialog.FontName, dialog.FontSize, FontStyle.Bold);
+                    companyNameLabel.ForeColor = dialog.TextColor;
+                }
+            }
         }
 
         private void LoadData()
@@ -104,6 +142,11 @@ namespace WindowsFormsLab1
             var top = 30;
             var right = chartPanel.ClientSize.Width - 30;
             var bottom = chartPanel.ClientSize.Height - 60;
+
+            chartLeft = left;
+            chartTop = top;
+            chartRight = right;
+            chartBottom = bottom;
 
             if (right <= left || bottom <= top)
             {
@@ -159,6 +202,45 @@ namespace WindowsFormsLab1
                 foreach (var point in linePoints)
                 {
                     e.Graphics.FillEllipse(markerBrush, point.X - 3, point.Y - 3, 6, 6);
+                }
+            }
+        }
+
+        private void ChartPanel_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            if (chartRight <= chartLeft || chartBottom <= chartTop)
+            {
+                return;
+            }
+
+            float chartWidth = chartRight - chartLeft;
+            float chartHeight = chartBottom - chartTop;
+            float sectionWidth = chartWidth / years.Length;
+
+            int maxRevenue = 300;
+            int minRevenue = 0;
+
+            for (int i = 0; i < years.Length; i++)
+            {
+                float valueRatio = (float)(revenues[i] - minRevenue) / (maxRevenue - minRevenue);
+                float barHeight = valueRatio * chartHeight;
+                float x = chartLeft + i * sectionWidth + sectionWidth * 0.15f;
+                float y = chartBottom - barHeight;
+                float width = sectionWidth * 0.7f;
+
+                if (e.X >= x && e.X <= x + width && e.Y >= y && e.Y <= chartBottom)
+                {
+                    MessageBox.Show(
+                        $"Year: {years[i]}\nRevenue: {revenues[i]}",
+                        "Revenue Information",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    return;
                 }
             }
         }
